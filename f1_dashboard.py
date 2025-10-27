@@ -8,6 +8,13 @@ import plotly.express as px
 BASE_DIR = "Stats"  # Change to your base path
 START_YEAR = 2010
 
+# Set page configuration
+st.set_page_config(
+    page_title="F1 Race Dashboard",
+    layout="wide",       # <-- this makes all tabs full width
+    initial_sidebar_state="expanded"
+)
+
 # ===== Helpers =====
 def is_year_dir(name):
     return name.isdigit() and len(name) == 4
