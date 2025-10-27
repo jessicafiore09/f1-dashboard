@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.express as px
 
 # ===== Config =====
-BASE_DIR = "Stats"  # Change to your base path
+BASE_DIR = "f1 data"  # Change to your base path
 START_YEAR = 2010
 
 # Set page configuration
@@ -22,7 +22,7 @@ def is_year_dir(name):
 def clean_city_display(folder_name):
     return folder_name.lower().replace("-grand-prix", "").replace("-", " ").title()
 
-def get_available_races(base_dir="Stats", start_year=2010):
+def get_available_races(base_dir="f1 data", start_year=2010):
     races = {}
     if not os.path.isdir(base_dir):
         return races
