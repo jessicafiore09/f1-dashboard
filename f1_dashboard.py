@@ -91,8 +91,9 @@ tab1, tab2, tab3 = st.tabs(["Race Results", "Driver Analysis", "Compare Drivers"
 
 # --- Tab 1: Race Results ---
 with tab1:
-    years = sorted(races_dict.keys())
-    year = st.selectbox("Select Year", years, key="race_results_year_tab1")
+    # Sort years descending so latest year is first
+    years = sorted(races_dict.keys(), reverse=True)
+    year = st.selectbox("Select Year", years, index=0, key="race_results_year_tab1")
 
     cities = list(races_dict[year].keys())
     city_display = st.selectbox("Select City", cities, key="race_results_city_tab1")
