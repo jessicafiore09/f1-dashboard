@@ -336,10 +336,10 @@ import json
 
 with tab5:
     # --- Select Year and Race ---
-    years_list = sorted(os.listdir("/Users/jessicafiore/f1-dashboard/tracinginsights"), reverse=True)
+    years_list = sorted(os.listdir("/Users/jessicafiore/f1-dashboard/"), reverse=True)
     year_choice = st.selectbox("Select Year", "2025", key="tab5_year")
 
-    races_path = f"/Users/jessicafiore/f1-dashboard/tracinginsights/{year_choice}"
+    races_path = f"/Users/jessicafiore/f1-dashboard/{year_choice}"
     all_races = [r for r in os.listdir(races_path) if r.endswith("Grand Prix")]
     race_choice = st.selectbox("Select Race", all_races, key="tab5_race")
 
