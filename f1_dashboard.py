@@ -3,6 +3,8 @@ import os
 import json
 import pandas as pd
 import plotly.express as px
+from pathlib import Path
+import plotly.graph_objects as go
 
 # ===== Config =====
 BASE_DIR = "f1 data"  # Change to your base path
@@ -87,7 +89,9 @@ if not races_dict:
     st.warning("No race data found in the directory.")
 
 # ===== Tabs =====
-tab1, tab2, tab3, tab4 = st.tabs(["Race Results", "Driver Analysis", "Compare Drivers", "Track Analysis"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Race Results", "Driver Analysis", "Compare Drivers", "Track Analysis", "Position Movement by Lap"])
+
+
 
 # --- Tab 1: Race Results ---
 with tab1:
@@ -322,3 +326,142 @@ with tab4:
     df_track = df_track[cols]
 
     st.dataframe(df_track, use_container_width=True)
+
+import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
+import os
+import json
+
+with tab5:
+    # --- Select Year and Race ---
+    years_list = sorted(os.listdir("/Users/jessicafiore/f1-dashboard/tracinginsights"), reverse=True)
+    year_choice = st.selectbox("Select Year", "2025", key="tab5_year")
+
+    races_path = f"/Users/jessicafiore/f1-dashboard/tracinginsights/{year_choice}"
+    all_races = [r for r in os.listdir(races_path) if r.endswith("Grand Prix")]
+    race_choice = st.selectbox("Select Race", all_races, key="tab5_race")
+
+    race_folder = os.path.join(races_path, race_choice, "Race")
+
+    # --- Load lap times data for all drivers ---
+    lap_data = []
+    for driver in os.listdir(race_folder):
+        driver_path = os.path.join(race_folder, driver, "laptimes.json")
+        if not os.path.exists(driver_path):
+            continue
+        with open(driver_path) as f:
+            data = json.load(f)
+        if "pos" not in data or not data["pos"]:
+            continue
+        for lap, pos, stint, comp in zip(data["lap"], data["pos"], data["stint"], data["compound"]):
+            if pos == "None":
+                continue
+            lap_data.append({
+                "Driver": driver,
+                "Lap": lap,
+                "Position": int(pos),
+                "Stint": int(stint),
+                "Compound": comp
+            })
+
+    if not lap_data:
+        st.warning("No lap positions found for this race.")
+    else:
+        df = pd.DataFrame(lap_data)
+
+        # --- Order drivers by Lap 1 position ---
+        lap1_df = df[df["Lap"] == 1].sort_values("Position")
+        driver_order = lap1_df["Driver"].tolist()
+        df["Driver"] = pd.Categorical(df["Driver"], categories=driver_order, ordered=True)
+
+        # --- Vertical spacing ---
+        spacing_factor = 1.5
+        df["Position_display"] = df["Position"] * spacing_factor
+
+        # --- Marker shapes per stint ---
+        stint_shapes = {1: "circle", 2: "square", 3: "triangle-up", 4: "diamond", 5: "cross", 6: "x"}
+        df["Marker"] = df["Stint"].map(lambda x: stint_shapes.get(x, "circle"))
+
+        # --- Assign calm and consistent colors per driver ---
+        calm_colors = [
+            "#4B8BBE", "#306998", "#FFE873", "#FFD43B", "#646464", 
+            "#9B9B9B", "#6A5ACD", "#20B2AA", "#FFB347", "#D2691E",
+            "#B0C4DE", "#CFCFCF", "#8FBC8F", "#D8BFD8", "#A9A9A9",
+            "#5F9EA0", "#778899", "#CD853F", "#87CEFA", "#BC8F8F"
+        ]
+        driver_colors = {driver: calm_colors[i % len(calm_colors)] for i, driver in enumerate(driver_order)}
+
+        # --- Create figure ---
+        fig = go.Figure()
+
+        for driver in driver_order:
+            df_driver = df[df["Driver"] == driver]
+            color = driver_colors[driver]
+
+            # Draw line
+            fig.add_trace(go.Scatter(
+                x=df_driver["Lap"],
+                y=df_driver["Position_display"],
+                mode="lines",
+                line=dict(color=color, width=2),
+                name=driver,
+                legendgroup=driver,
+                hoverinfo="skip"  # line itself will not show hover
+            ))
+
+            fig.update_layout(
+            height=700,  # stretch the graph vertically
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            xaxis=dict(title='Lap', showgrid=True),
+            yaxis=dict(title='Position', showgrid=True, dtick=1, autorange='reversed')
+        )
+
+
+            # Draw markers per stint on top with hover info
+            for stint in df_driver["Stint"].unique():
+                df_stint = df_driver[df_driver["Stint"] == stint]
+                fig.add_trace(go.Scatter(
+                    x=df_stint["Lap"],
+                    y=df_stint["Position_display"],
+                    mode="markers",
+                    marker=dict(symbol=stint_shapes.get(stint, "circle"), size=10, color=color),
+                    name=driver,
+                    legendgroup=driver,
+                    showlegend=False,
+                    hovertemplate=(
+                        "<b>%{customdata[0]}</b><br>"
+                        "Lap: %{x}<br>"
+                        "Position: %{y:.0f}<br>"
+                        "Stint: %{customdata[1]}<br>"
+                        "Tyre: %{customdata[2]}<extra></extra>"
+                    ),
+                    customdata=df_stint[["Driver", "Stint", "Compound"]].values
+                ))
+
+        max_pos = df["Position"].max()
+        fig.update_layout(
+            yaxis=dict(
+                autorange="reversed",
+                title="Position",
+                dtick=spacing_factor,
+                tickvals=[i * spacing_factor for i in range(1, max_pos + 1)],
+                ticktext=[str(i) for i in range(1, max_pos + 1)]
+            ),
+            xaxis=dict(title="Lap"),
+            legend=dict(
+                title="Driver",
+                yanchor="top",
+                y=1,
+                x=-0.25,
+                traceorder="normal",
+                orientation="v"
+            ),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            margin=dict(l=150)
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
