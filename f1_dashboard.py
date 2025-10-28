@@ -87,7 +87,7 @@ if not races_dict:
     st.warning("No race data found in the directory.")
 
 # ===== Tabs =====
-tab1, tab2, tab3 = st.tabs(["Race Results", "Driver Analysis", "Compare Drivers"])
+tab1, tab2, tab3, tab4 = st.tabs(["Race Results", "Driver Analysis", "Compare Drivers", "Track Analysis"])
 
 # --- Tab 1: Race Results ---
 with tab1:
@@ -279,3 +279,46 @@ with tab3:
                 marker=dict(size=8)
             )
             st.plotly_chart(fig_champ, use_container_width=True)
+
+# --- Tab 4: Track Analysis ---
+with tab4:
+    st.subheader("Track Analysis — Top 5 Finishers Over 5 Years")
+
+    years_to_compare = ["2025", "2024", "2023", "2022", "2021"]
+    available_years = [y for y in years_to_compare if y in races_dict]
+
+    # Collect all track names across available years
+    track_names = set()
+    for year in available_years:
+        for display in races_dict[year].keys():
+            track_names.add(display)
+    track_names = sorted(track_names)
+
+    selected_track = st.selectbox("Select Track", track_names, key="track_analysis_tab4")
+
+    # Prepare table data
+    table_data = []
+    positions_to_show = [1, 2, 3, 4, 5]
+
+    for pos in positions_to_show:
+        row = {"Track Name": f"{selected_track} — P{pos}"}
+        for year in available_years:
+            folder = races_dict[year].get(selected_track)
+            if folder:
+                df_race, _ = load_race_data(year, folder)
+                if not df_race.empty:
+                    driver = df_race.loc[df_race["Position"] == pos, "Driver"].values
+                    row[f"{year}"] = driver[0] if len(driver) > 0 else "N/A"
+                else:
+                    row[f"{year}"] = "No Data"
+            else:
+                row[f"{year}"] = "N/A"
+        table_data.append(row)
+
+    df_track = pd.DataFrame(table_data)
+
+    # Reorder columns to match desired order
+    cols = ["Track Name"] + available_years
+    df_track = df_track[cols]
+
+    st.dataframe(df_track, use_container_width=True)
